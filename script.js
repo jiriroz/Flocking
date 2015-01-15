@@ -7,9 +7,8 @@ var HEIGHT = 600;
 document.getElementById('canvas').style.width = WIDTH;
 document.getElementById('canvas').style.height = HEIGHT;
 
-var MOUSEPOINT = new Point(WIDTH/2,HEIGHT/2);
-var RESOLUTION = 100;
-var VELOCITYSCALE = 1.3;
+var RESOLUTION = 20;
+var VELOCITYSCALE = 1;
 
 var Vehicle = function (x,y,size) {
 	this.velocity = new Point(0,0);
@@ -92,8 +91,9 @@ Vehicle.prototype.getNeighbors = function (subdivision) {
 	var row = parseInt(this.image.position.y / RESOLUTION);
 	col = limit(col,0,WIDTH/RESOLUTION - 1);
 	row = limit(row,0,HEIGHT/RESOLUTION - 1);
-	var neighborhood = [[1,0],[-1,0],[0,1],[0,-1]];
-	var neighbors = subdivision[col][row];
+	var neighborhood = [[1,0],[-1,0],[0,1],[0,-1],[0,0],
+	[1,1],[-1,1],[1,-1],[-1,-1],[0,2],[0,-2],[-2,0],[2,0]];
+	var neighbors = [];
 	for (var i=0; i<neighborhood.length; i++) {
 		var x = col + neighborhood[i][0];
 		var y = row + neighborhood[i][1];
@@ -114,9 +114,9 @@ Prey.prototype = Object.create(Vehicle.prototype);
 
 Prey.prototype.display = function (x,y) {
 	this.image = new Path.Circle([x,y],this.size);
-	var r = Math.random()*0.5;
-	var g = Math.random()*0.5;
-	var b = Math.random()*0.5;
+	var r = Math.random()*0.3;
+	var g = Math.random()*0.3;
+	var b = Math.random()*0.3;
 	this.image.fillColor = new Color(r,g,b);
 };
 
@@ -124,7 +124,7 @@ Prey.prototype.applyBehaviors = function (flock,predators) {
 	this.applyRules(flock);
 	var sumEscape = new Point(0,0);
 	for (var i=0; i<predators.length; i++) {
-		if (this.isWithinDistance(predators[i],100)) {
+		if (this.isWithinDistance(predators[i],80)) {
 			var escape = this.goAwayFrom(predators[i].image.position);
 			escape = escape.normalize(5);
 			sumEscape += escape;
@@ -141,7 +141,7 @@ Prey.prototype.applyRules = function (flock) {
 	var countSeparation = 0;
 	var countAlignment = 0;
 	var neighborhood = 100;
-	var desiredSeparation = 50;
+	var desiredSeparation = 30;
 	var velocities = new Point(0,0);
 	var separate = new Point(0,0);
 	for (var i=0; i<flockArray.length; i++) {
@@ -174,7 +174,7 @@ Prey.prototype.applyRules = function (flock) {
 	if (countSeparation > 0) {
 		separate /= countSeparation;
 		var separation = this.steer(separate);
-		separation *= 1;
+		separation *= 1.2;
 		this.applyForce(separation);
 	}
 };
@@ -332,16 +332,14 @@ var limit = function (n,lower,upper) {
 };
 
 var bounds = new Bounds();
-var flock = new Flock(30);
-var predators = new Predators(1);
+var flock = new Flock(50);
+var predators = new Predators(2);
 
-onFrame = function (event) {
+var execute = function () {
 	flock.run(predators);
 	predators.run(flock);
 };
 
-onMouseDown = function (event) {
-	MOUSEPOINT = event.point;
-
-
+onFrame = function (event) {
+	execute();
 };
