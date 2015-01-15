@@ -8,8 +8,8 @@ document.getElementById('canvas').style.width = WIDTH;
 document.getElementById('canvas').style.height = HEIGHT;
 
 var MOUSEPOINT = new Point(WIDTH/2,HEIGHT/2);
-var RESOLUTION = 50;
-var VELOCITYSCALE = 1;
+var RESOLUTION = 100;
+var VELOCITYSCALE = 1.3;
 
 var Vehicle = function (x,y,size) {
 	this.velocity = new Point(0,0);
@@ -132,14 +132,19 @@ Prey.prototype.display = function (x,y) {
 };
 
 Prey.prototype.applyBehaviors = function (flock,predators) {
+	this.applyRules(flock);
+	var sumEscape = new Point(0,0);
 	for (var i=0; i<predators.length; i++) {
 		if (this.isWithinDistance(predators[i],200)) {
 			var escape = this.goAwayFrom(predators[i].image.position);
 			escape = escape.normalize(5);
-			this.applyForce(escape);
+			sumEscape += escape;
 		}
 	}
-	this.applyRules(flock);
+	if (sumEscape.length > 0) {
+		this.acceleration *= 0;
+		this.applyForce(sumEscape);
+	}
 	//needs to be called as the last one
 	//(cancels out all other effects if near the margin)
 	Vehicle.prototype.applyBehaviors.call(this);
@@ -149,8 +154,8 @@ Prey.prototype.applyRules = function (flock) {
 	var flockArray = this.getNeighbors(flock.subdivision);
 	var countSeparation = 0;
 	var countAlignment = 0;
-	var neighborhood = 80;
-	var desiredSeparation = 70;
+	var neighborhood = 150;
+	var desiredSeparation = 100;
 	var velocities = new Point(0,0);
 	var separate = new Point(0,0);
 	for (var i=0; i<flockArray.length; i++) {
@@ -176,6 +181,7 @@ Prey.prototype.applyRules = function (flock) {
 	if (countAlignment > 0) {
 		velocities /= countAlignment;
 		var alignment = this.steer(velocities);
+		alignment = alignment.normalize(3);
 		this.applyForce(alignment);
 	}
 	if (countSeparation > 0) {
@@ -335,8 +341,8 @@ var limit = function (n,lower,upper) {
 	}
 };
 
-var flock = new Flock(50);
-var predators = new Predators(2);
+var flock = new Flock(30);
+var predators = new Predators(1);
 
 onFrame = function (event) {
 	flock.run(predators);
