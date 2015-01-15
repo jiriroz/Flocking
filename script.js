@@ -29,6 +29,7 @@ Vehicle.prototype.display = function (x,y) {
 
 Vehicle.prototype.run = function () {
 	this.update();
+	this.checkEdges();
 };
 
 Vehicle.prototype.update = function () {
@@ -37,37 +38,25 @@ Vehicle.prototype.update = function () {
 	this.acceleration *= 0;
 };
 
+Vehicle.prototype.checkEdges = function () {
+	if (this.image.position.x < 0) {
+		this.image.position.x = WIDTH;
+	} else if (this.image.position.x > WIDTH) {
+		this.image.position.x = 0;
+	}
+	if (this.image.position.y < 0) {
+		this.image.position.y = HEIGHT;
+	} else if (this.image.position.y > HEIGHT) {
+		this.image.position.y = 0;
+	}
+};
+
 Vehicle.prototype.applyBehaviors = function () {
-	var repulse = this.repulseFromWalls();
-	this.applyForce(repulse);
 };
 
 Vehicle.prototype.applyForce = function (force) {
 	force /= this.mass;
 	this.acceleration += force;
-};
-
-Vehicle.prototype.repulseFromWalls = function () {
-	var desired;
-	var steer = new Point(0,0);
-	if (this.image.position.x < 30) {
-		desired = new Point(this.maxspeed,this.velocity.y);
-		steer = this.steer(desired);
-	} else if (this.image.position.x > WIDTH-30) {
-		desired = new Point(-this.maxspeed,this.velocity.y);
-		steer = this.steer(desired);
-	} else if (this.image.position.y < 30) {
-		desired = new Point(this.velocity.x,this.maxspeed);
-		steer = this.steer(desired);
-	} else if (this.image.position.y > HEIGHT-30) {
-		desired = new Point(this.velocity.x,-this.maxspeed);
-		steer = this.steer(desired);
-	}
-	//cancel out all other accelerations
-	if (steer.length !== 0) {
-		this.acceleration *= 0;
-	}
-	return steer;
 };
 
 Vehicle.prototype.steer = function (desired) {
@@ -116,7 +105,7 @@ Vehicle.prototype.getNeighbors = function (subdivision) {
 };
 
 var Prey = function (x,y) {
-	Vehicle.call(this,x,y,7);
+	Vehicle.call(this,x,y,3);
 	this.maxspeed = 6*VELOCITYSCALE;
 	this.maxsteer = 0.2*VELOCITYSCALE;
 };
@@ -125,9 +114,9 @@ Prey.prototype = Object.create(Vehicle.prototype);
 
 Prey.prototype.display = function (x,y) {
 	this.image = new Path.Circle([x,y],this.size);
-	var r = Math.random();
-	var g = Math.random();
-	var b = Math.random();
+	var r = Math.random()*0.5;
+	var g = Math.random()*0.5;
+	var b = Math.random()*0.5;
 	this.image.fillColor = new Color(r,g,b);
 };
 
@@ -135,7 +124,7 @@ Prey.prototype.applyBehaviors = function (flock,predators) {
 	this.applyRules(flock);
 	var sumEscape = new Point(0,0);
 	for (var i=0; i<predators.length; i++) {
-		if (this.isWithinDistance(predators[i],200)) {
+		if (this.isWithinDistance(predators[i],100)) {
 			var escape = this.goAwayFrom(predators[i].image.position);
 			escape = escape.normalize(5);
 			sumEscape += escape;
@@ -145,17 +134,14 @@ Prey.prototype.applyBehaviors = function (flock,predators) {
 		this.acceleration *= 0;
 		this.applyForce(sumEscape);
 	}
-	//needs to be called as the last one
-	//(cancels out all other effects if near the margin)
-	Vehicle.prototype.applyBehaviors.call(this);
 };
 
 Prey.prototype.applyRules = function (flock) {
 	var flockArray = this.getNeighbors(flock.subdivision);
 	var countSeparation = 0;
 	var countAlignment = 0;
-	var neighborhood = 150;
-	var desiredSeparation = 100;
+	var neighborhood = 100;
+	var desiredSeparation = 50;
 	var velocities = new Point(0,0);
 	var separate = new Point(0,0);
 	for (var i=0; i<flockArray.length; i++) {
@@ -176,24 +162,25 @@ Prey.prototype.applyRules = function (flock) {
 	}
 	if (flockArray.length > 0) {
 		var cohesion = this.goTo(flock.center);
+		cohesion *= 0.75;
 		this.applyForce(cohesion);
 	}
 	if (countAlignment > 0) {
 		velocities /= countAlignment;
 		var alignment = this.steer(velocities);
-		alignment = alignment.normalize(3);
+		alignment *= 1.5;
 		this.applyForce(alignment);
 	}
 	if (countSeparation > 0) {
 		separate /= countSeparation;
 		var separation = this.steer(separate);
-		separation = separation.normalize(2);
+		separation *= 1;
 		this.applyForce(separation);
 	}
 };
 
 var Predator = function (x,y) {
-	Vehicle.call(this,x,y,15);
+	Vehicle.call(this,x,y,7);
 	this.maxspeed = 8*VELOCITYSCALE;
 	this.maxsteer = 0.4*VELOCITYSCALE;
 };
@@ -208,9 +195,6 @@ Predator.prototype.display = function (x,y) {
 Predator.prototype.applyBehaviors = function (flock) {
 	var hunt = this.findNearest(flock);
 	this.applyForce(hunt);
-	//needs to be called as the last one
-	//(cancels out all other effects if near the margin)
-	Vehicle.prototype.applyBehaviors.call(this);
 };
 
 Predator.prototype.findNearest = function (flock) {
@@ -245,14 +229,8 @@ var Flock = function (count) {
 
 Flock.prototype.createFlock = function (count) {
 	for (var i=0; i<count; i++) {
-		this.createRandomPrey();
+		createRandomBoid(Prey,this.flock);
 	}
-};
-
-Flock.prototype.createRandomPrey = function () {
-	var x = Math.random()*WIDTH;
-	var y = Math.random()*HEIGHT;
-	this.flock.push(new Prey(x,y));
 };
 
 Flock.prototype.assignToSubsets = function () {
@@ -310,14 +288,8 @@ var Predators = function (count) {
 
 Predators.prototype.createPredators = function (count) {
 	for (var i=0; i<count; i++) {
-		this.createRandomPredator();
+		createRandomBoid(Predator,this.predators);
 	}
-};
-
-Predators.prototype.createRandomPredator = function () {
-	var x = Math.random()*WIDTH;
-	var y = Math.random()*HEIGHT;
-	this.predators.push(new Predator(x,y));
 };
 
 Predators.prototype.run = function (flock) {
@@ -325,6 +297,24 @@ Predators.prototype.run = function (flock) {
 		this.predators[i].applyBehaviors(flock);
 		this.predators[i].run();
 	}
+};
+
+var Bounds = function () {
+	this.path = new Path();
+	this.path.strokeColor = 'black';
+	this.path.add(new Point(0,0), new Point(0,HEIGHT),
+				  new Point(WIDTH,HEIGHT), new Point(WIDTH,0));
+	this.path.closed = 'true';
+};
+
+Bounds.prototype.remove = function () {
+	this.path.remove();
+};
+
+var createRandomBoid = function (Type,array) {
+	var x = Math.random()*WIDTH;
+	var y = Math.random()*HEIGHT;
+	array.push(new Type(x,y));
 };
 
 var isWithinArray = function (index,arrayLength) {
@@ -341,6 +331,7 @@ var limit = function (n,lower,upper) {
 	}
 };
 
+var bounds = new Bounds();
 var flock = new Flock(30);
 var predators = new Predators(1);
 
