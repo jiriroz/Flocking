@@ -7,7 +7,7 @@ var HEIGHT = 600;
 document.getElementById('canvas').style.width = WIDTH;
 document.getElementById('canvas').style.height = HEIGHT;
 
-var RESOLUTION = 20;
+var RESOLUTION = 30;
 var VELOCITYSCALE = 1;
 
 var Vehicle = function (x,y,size) {
@@ -27,8 +27,12 @@ Vehicle.prototype.display = function (x,y) {
 };
 
 Vehicle.prototype.run = function () {
+	this.updateDirection();
 	this.update();
 	this.checkEdges();
+};
+
+Vehicle.prototype.updateDirection = function () {
 };
 
 Vehicle.prototype.update = function () {
@@ -106,7 +110,7 @@ Vehicle.prototype.getNeighbors = function (subdivision) {
 
 var Prey = function (x,y) {
 	Vehicle.call(this,x,y,3);
-	this.maxspeed = 6*VELOCITYSCALE;
+	this.maxspeed = 7*VELOCITYSCALE;
 	this.maxsteer = 0.2*VELOCITYSCALE;
 };
 
@@ -126,7 +130,7 @@ Prey.prototype.applyBehaviors = function (flock,predators) {
 	for (var i=0; i<predators.length; i++) {
 		if (this.isWithinDistance(predators[i],80)) {
 			var escape = this.goAwayFrom(predators[i].image.position);
-			escape = escape.normalize(5);
+			escape *= 3;
 			sumEscape += escape;
 		}
 	}
@@ -181,7 +185,7 @@ Prey.prototype.applyRules = function (flock) {
 
 var Predator = function (x,y) {
 	Vehicle.call(this,x,y,7);
-	this.maxspeed = 8*VELOCITYSCALE;
+	this.maxspeed = 10*VELOCITYSCALE;
 	this.maxsteer = 0.4*VELOCITYSCALE;
 };
 
@@ -311,6 +315,12 @@ Bounds.prototype.remove = function () {
 	this.path.remove();
 };
 
+var Background = function () {
+	var rectangle = new Rectangle(new Point(0,0), new Point(WIDTH,HEIGHT));
+	this.path = new Path.Rectangle(rectangle);
+	this.path.fillColor = new Color(0.5,0.8,0.9);
+};
+
 var createRandomBoid = function (Type,array) {
 	var x = Math.random()*WIDTH;
 	var y = Math.random()*HEIGHT;
@@ -331,9 +341,10 @@ var limit = function (n,lower,upper) {
 	}
 };
 
+var background = new Background();
 var bounds = new Bounds();
 var flock = new Flock(50);
-var predators = new Predators(2);
+var predators = new Predators(1);
 
 var execute = function () {
 	flock.run(predators);
